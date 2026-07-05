@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dev - Json</title>
+    
+    <link rel="shortcut icon" href="https://i.ibb.co/gbK3wKmj/file.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/lib/toml.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body, textarea, pre, code { -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }
+        body { background-color: #0b0f19; color: #e2e8f0; padding: 14px; min-height: 100vh; display: flex; flex-direction: column; }
+
+        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #1e293b; }
+        h1 { font-size: 1.2rem; color: #f1f5f9; font-weight: 700; }
+        .header-actions { display: flex; gap: 6px; }
+
+        .btn-index { background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 7px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+        .mode-selector { display: flex; background: #151f32; padding: 4px; border-radius: 10px; margin-bottom: 14px; border: 1px solid #22314d; }
+        .mode-tab { flex: 1; background: transparent; border: none; color: #94a3b8; padding: 9px 0; font-size: 0.85rem; font-weight: 600; border-radius: 7px; cursor: pointer; text-align: center; }
+        .mode-tab.active { background: #38bdf8; color: #0f172a; }
+
+        .panel-title { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .editor-wrapper { background: #090d16; border: 1px solid #22314d; border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+        .editor-container { display: flex; position: relative; height: 300px; overflow: hidden; }
+
+        .line-numbers, #json-input, #json-highlight, .structure-box, #reverse-input {
+            font-family: 'JetBrains Mono', monospace !important; font-size: 13px !important; line-height: 20px !important;
+            tab-size: 2 !important; -moz-tab-size: 2 !important; letter-spacing: 0px !important; word-spacing: 0px !important;
+            font-weight: 400 !important; text-rendering: optimizeSpeed !important; -webkit-font-smoothing: antialiased !important;
+            font-variant-ligatures: none !important; font-feature-settings: "liga" 0, "calt" 0 !important;
+        }
+
+        #json-highlight span { display: inline !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
+        .line-numbers { width: 40px; padding: 12px 0; background: #05070f; color: #475569; text-align: center; user-select: none; border-right: 1px solid #151f32; overflow: hidden; }
+        .editor-relative { position: relative; flex: 1; height: 100%; overflow: hidden; }
+
+        #json-input::-webkit-scrollbar, #json-highlight::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+        #json-input, #json-highlight {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0 !important; padding: 12px !important;
+            border: 1px solid transparent !important; outline: 0 !important; white-space: pre !important; word-wrap: normal !important;
+            box-sizing: border-box !important; background: transparent !important; scrollbar-width: none;
+        }
+
+        textarea#json-input { color: transparent; -webkit-text-fill-color: transparent; caret-color: #38bdf8 !important; z-index: 2; resize: none; overflow: auto !important; }
+        pre#json-highlight { color: #cbd5e1; z-index: 1; pointer-events: none; overflow: hidden !important; }
+
+        .json-key { color: #f87171; }       
+        .json-value { color: #34d399; }                     
+        .json-array { color: #60a5fa; }  
+        .json-object { color: #dc2626 !important; font-weight: bold !important; } 
+
+        .error-console { background: #05070f; padding: 8px 12px; font-family: monospace; font-size: 0.75rem; color: #64748b; border-top: 1px solid #151f32; min-height: 32px; word-break: break-all; }
+        .error-console.danger { color: #f87171; background: #251010; }
+
+        .mobile-action-stack { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+        .btn { width: 100%; padding: 12px; border-radius: 10px; font-size: 0.95rem; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease; }
+        .btn:active { opacity: 0.85; transform: scale(0.99); }
+
+        .btn-clear { background: #3f1616; color: #f87171; border: 1px solid #7f1d1d; }
+        .btn-import { background: #2563eb; color: white; }
+        .btn-export { background: #10b981; color: white; }
+        .btn-save { background: #8b5cf6; color: white; }
+        .btn-structure { background: #eab308; color: #0f172a; }
+
+        .filename-box { display: flex; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px 12px; align-items: center; gap: 6px; font-size: 0.9rem; width: 100%; margin-top: 6px; }
+        .filename-box input, .filename-box select { background: transparent; border: none; color: white; outline: none; width: 100%; font-size: 0.95rem; }
+
+        .structure-container { background: #090d16; border: 1px solid #22314d; border-radius: 12px; padding: 12px; max-height: 250px; overflow: auto; margin-bottom: 10px; }
+        .structure-box { color: #a7f3d0; white-space: pre; word-wrap: normal; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 15, 25, 0.85); backdrop-filter: blur(4px); display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 100; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: #151f32; width: 100%; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 22px; transform: translateY(100%); transition: transform 0.2s ease; max-height: 85vh; display: flex; flex-direction: column; }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+
+        .saved-list { list-style: none; overflow-y: auto; flex: 1; margin-bottom: 15px; }
+        .saved-item { display: flex; justify-content: space-between; align-items: center; background: #090d16; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #22314d; }
+        .saved-item-name { font-weight: 600; color: #38bdf8; font-size: 0.9rem; }
+        .saved-item-actions { display: flex; gap: 6px; }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; border: none; font-weight: bold; }
+
+        .spinner-container { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px 0; }
+        .custom-spinner { width: 42px; height: 42px; border: 4px solid rgba(56, 189, 248, 0.1); border-top-color: #38bdf8; border-bottom-color: #10b981; border-radius: 50%; animation: superSpin 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite; }
+        @keyframes superSpin { to { transform: rotate(360deg); } }
+
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 10px 22px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; display: none; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+
+        /* FOOTER & RFC SECTION STYLES */
+        footer { text-align: center; margin-top: 30px; padding: 20px 0; font-size: 0.9rem; color: #94a3b8; border-top: 1px solid #1e293b; }
+        footer u { font-weight: 700; color: #f8fafc; text-decoration: underline; text-decoration-color: #38bdf8; text-underline-offset: 4px; }
+        
+        .rfc-container { background: #090d16; border: 1px solid #22314d; border-radius: 8px; margin-top: 15px; padding: 10px; text-align: left; }
+        .rfc-container details summary { font-size: 0.85rem; font-weight: 600; color: #38bdf8; cursor: pointer; outline: none; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+        .rfc-container details summary::-webkit-details-marker { display: none; }
+        .rfc-content-box { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #1e293b; }
+        .rfc-text-pre { font-family: monospace; font-size: 11px; color: #64748b; line-height: 16px; max-height: 250px; overflow: auto; background: #05070f; padding: 10px; border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <h1>Dev - Json</h1>
+        <div class="header-actions">
+            <button class="btn-index" onclick="openDiffModal()">🔍 Diff Check</button>
+            <button class="btn-index" onclick="openStorageModal()">📂 Storage Index</button>
+        </div>
+    </div>
+
+    <div class="panel-title" style="color: #38bdf8;">📥 Fetch JSON From URL (Mini-Postman)</div>
+    <div class="filename-box" style="margin-top: 0; margin-bottom: 14px; background: #151f32; border-color: #22314d;">
+        <input type="text" id="api-url-input" placeholder="Enter API Link (e.g., https://api.github.com)...">
+        <button onclick="fetchJsonFromUrl()" style="background: #38bdf8; color: #0f172a; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; white-space: nowrap;">Fetch</button>
+    </div>
+
+    <div class="mode-selector">
+        <button id="mode-default" class="mode-tab active" onclick="setMode('default')">Default</button>
+        <button id="mode-schema" class="mode-tab" onclick="setMode('schema')">Schema</button>
+        <button id="mode-geo" class="mode-tab" onclick="setMode('geo')">Geo</button>
+    </div>
+
+    <div class="panel-title">
+        <span>Code Editor <button onclick="copyMainJsonCode()" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 2px 8px; margin-left: 6px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">📋 Copy JSON</button></span>
+        <span id="linter-status" style="color: #94a3b8;">● Empty</span>
+    </div>
+
+    <div class="filename-box" style="margin-top: 0; margin-bottom: 8px; background: #151f32; border-color: #22314d; justify-content: space-between; display: flex; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 4px;">
+            <span style="color: #94a3b8; font-size: 0.8rem; font-weight: bold;">Indent:</span>
+            <select id="indent-select" style="background: #0f172a; color: white; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; width: auto; border: 1px solid #334155;">
+                <option value="2">2 Spaces</option>
+                <option value="4">4 Spaces</option>
+                <option value="tab">Tab Indent</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 6px;">
+            <button onclick="formatJsonCode()" style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">✨ Format</button>
+            <button onclick="minifyJsonCode()" style="background: #eab308; color: #0f172a; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">🗜️ Minify</button>
+        </div>
+    </div>
+
+    <div class="editor-wrapper">
+        <div class="editor-container">
+            <div class="line-numbers" id="line-numbers">1</div>
+            <div class="editor-relative">
+                <pre id="json-highlight"></pre>
+                <textarea id="json-input" spellcheck="false" placeholder="Enter code or paste heavy JSON data files here..." oninput="onEditorInput()" onscroll="syncEditorScroll()"></textarea>
+            </div>
+        </div>
+        <div id="error-log" class="error-console">System Ready.</div>
+    </div>
+
+    <div class="panel-title" style="color: #eab308;">⚡ JSONPath Evaluator</div>
+    <div class="filename-box" style="margin-top: 0; margin-bottom: 6px; background: #090d16;">
+        <span style="color: #64748b; font-family: monospace; font-weight: bold;">$</span>
+        <input type="text" id="jsonpath-input" placeholder=".store.book[0].title or .items[*]" oninput="evaluateJsonPath()">
+    </div>
+    <div style="background: #05070f; padding: 8px 12px; border-radius: 8px; border: 1px solid #151f32; margin-bottom: 14px; max-height: 120px; overflow: auto;">
+        <pre id="jsonpath-output" style="font-family: monospace; font-size: 0.8rem; color: #60a5fa;">Realtime JSONPath query results will appear here...</pre>
+    </div>
+
+    <div class="panel-title" style="color: #f43f5e;">🚀 Push JSON to Web Server (POST)</div>
+    <div class="filename-box" style="margin-top: 0; margin-bottom: 14px; background: #151f32; border-color: #22314d;">
+        <input type="text" id="server-url-input" placeholder="Endpoint (e.g., https://api.myserver.com/payload)...">
+        <button onclick="pushJsonToServer()" style="background: #f43f5e; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; white-space: nowrap;">Push</button>
+    </div>
+
+    <div class="mobile-action-stack">
+        <button class="btn btn-clear" onclick="clearAllCode()">🧹 Clear Editor</button>
+        <button class="btn btn-import" onclick="triggerImport()">📥 Import File (.json)</button>
+        <input type="file" id="file-import" accept=".json" onchange="handleFileImport(event)" style="display: none;">
+        <button class="btn btn-export" onclick="openExportModal()">📤 Export File (.json)</button>
+        <button class="btn btn-save" onclick="promptSaveCode()">💾 Save to Storage Index</button>
+        <button class="btn btn-structure" onclick="generateStructure()">⚡ Generate Schema Tree</button>
+    </div>
+
+    <div class="panel-title">Custom Interpret Tree Structure</div>
+    <div class="structure-container">
+        <pre id="structure-output" class="structure-box">Click 'Generate Schema Tree' to render...</pre>
+    </div>
+    <button class="btn" style="background: #334155; color: white; font-size: 0.85rem; margin-bottom: 20px;" onclick="exportStructureText()">📄 Export Structure (.txt)</button>
+
+    <div class="panel-title" style="color: #10b981;">💻 Model Class Generator</div>
+    <div class="mobile-action-stack" style="flex-direction: row; gap: 6px; margin-bottom: 10px;">
+        <button class="btn" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 10px; font-size: 0.8rem;" onclick="generateModel('ts')">TypeScript</button>
+        <button class="btn" style="background: #1e293b; color: #45faf4; border: 1px solid #334155; padding: 10px; font-size: 0.8rem;" onclick="generateModel('dart')">Dart</button>
+        <button class="btn" style="background: #1e293b; color: #ffd43b; border: 1px solid #334155; padding: 10px; font-size: 0.8rem;" onclick="generateModel('py')">Python</button>
+    </div>
+
+    <div id="model-output-zone" style="display: none; background: #090d16; border: 1px solid #22314d; border-radius: 12px; padding: 12px; margin-bottom: 14px;">
+        <div class="panel-title" style="margin-bottom: 8px;">
+            <span id="model-output-title" style="color: #10b981;">Model Code</span>
+            <button onclick="document.getElementById('model-output-zone').style.display='none'" style="background:transparent; border:none; color:#ef4444; font-size:0.75rem; cursor:pointer;">[Close x]</button>
+        </div>
+        <pre id="model-text-output" class="structure-box" style="color: #e2e8f0; max-height: 180px; overflow: auto; background: #05070f; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace !important; font-size: 12px;"></pre>
+        <div style="display: flex; gap: 6px;">
+            <button class="btn" style="background: #2563eb; color: white; padding: 8px; font-size:0.85rem; flex: 1;" onclick="copyModelResult()">📋 Copy Code</button>
+            <button class="btn" style="background: #10b981; color: white; padding: 8px; font-size:0.85rem; flex: 1;" onclick="exportModelFile()">📥 Export File</button>
+        </div>
+    </div>
+
+    <div class="panel-title" style="color: #65a30d; margin-top: 10px;">🛠️ Data Conversion Extensions</div>
+    <div class="mobile-action-stack" style="flex-direction: row; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;">
+        <button class="btn" style="background: #1e293b; color: #a3e635; border: 1px solid #65a30d; padding: 8px; font-size: 0.8rem; flex: 1; min-width: 45%;" onclick="activateConverter('yaml')">To YAML ⚙️</button>
+        <button class="btn" style="background: #1e293b; color: #f472b6; border: 1px solid #db2777; padding: 8px; font-size: 0.8rem; flex: 1; min-width: 45%;" onclick="activateConverter('xml')">To XML 📑</button>
+        <button class="btn" style="background: #1e293b; color: #fb923c; border: 1px solid #ea580c; padding: 8px; font-size: 0.8rem; flex: 1; min-width: 45%;" onclick="activateConverter('toml')">To TOML 🛠️</button>
+        <button class="btn" style="background: #1e293b; color: #22d3ee; border: 1px solid #0891b2; padding: 8px; font-size: 0.8rem; flex: 1; min-width: 45%;" onclick="activateConverter('csv')">To CSV 📊</button>
+    </div>
+
+    <div id="converter-selection-zone" style="display: none; background: #151f32; border: 1px solid #22314d; padding: 12px; border-radius: 12px; margin-bottom: 14px;">
+        <label id="converter-label" style="font-size: 0.8rem; color: #94a3b8; display: block; margin-bottom: 4px;">Select a record from Storage Index:</label>
+        <div class="filename-box" style="margin-top: 0;">
+            <select id="converter-select" onchange="onConverterRecordSelected()"></select>
+        </div>
+    </div>
+
+    <div id="converter-output-zone" style="display: none; background: #090d16; border: 1px solid #22314d; border-radius: 12px; padding: 12px; margin-bottom: 14px;">
+        <div class="panel-title" style="margin-bottom: 8px;">
+            <span id="converter-output-title" style="color: #38bdf8;">Transformed Data Struct</span>
+            <button onclick="toggleConverterBody()" style="background:transparent; border:none; color:#64748b; font-size:0.75rem; cursor:pointer;">[Toggle Hide/Show]</button>
+        </div>
+        <div id="converter-toggle-body">
+            <pre id="converter-text-output" class="structure-box" style="color: #cbd5e1; max-height: 200px; overflow: auto; background: #05070f; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace !important; font-size: 12px;"></pre>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" style="background: #10b981; color: white; padding: 8px; font-size:0.85rem;" onclick="exportConverterResult()">📥 Export File</button>
+                <button class="btn" style="background: #2563eb; color: white; padding: 8px; font-size:0.85rem;" onclick="copyConverterResult()">📋 Copy Code</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-title" style="color: #a855f7;">🔀 Reverse Compiler (To JSON)</div>
+    <div style="background: #151f32; padding: 12px; border-radius: 12px; border: 1px solid #22314d; margin-bottom: 14px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <select id="reverse-format-select" style="background: #0f172a; color: white; padding: 8px; border-radius: 6px; border: 1px solid #334155; font-size: 0.85rem; flex: 1;">
+                <option value="xml">XML to JSON</option>
+                <option value="yaml">YAML to JSON</option>
+                <option value="toml">TOML to JSON</option>
+            </select>
+        </div>
+        
+        <textarea id="reverse-input" placeholder="Paste XML, YAML, or TOML here..." style="width: 100%; height: 100px; background: #090d16; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; padding: 10px; resize: none; margin-bottom: 8px;"></textarea>
+        
+        <div class="filename-box" style="margin-top: 0; margin-bottom: 8px; background: #090d16;">
+            <input type="text" id="reverse-url-input" placeholder="Or fetch from URL...">
+            <button onclick="fetchReverseFromUrl()" style="background: #38bdf8; color: #0f172a; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.75rem; cursor: pointer;">Fetch</button>
+        </div>
+        
+        <div style="display: flex; gap: 8px;">
+            <input type="file" id="reverse-file-import" onchange="handleReverseFileImport(event)" style="display: none;">
+            <button class="btn" style="background: #334155; padding: 8px; font-size: 0.85rem; flex: 1;" onclick="document.getElementById('reverse-file-import').click()">📁 Load File</button>
+            <button class="btn" style="background: #a855f7; color: white; padding: 8px; font-size: 0.85rem; flex: 2;" onclick="executeReverseCompilation()">⚡ Compile to JSON</button>
+        </div>
+    </div>
+
+    <div id="export-modal" class="modal-overlay" onclick="closeExportModalOnOuter(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 style="color: white; font-size: 1.05rem;">Export File Configuration (.json)</h3>
+                <button onclick="closeExportModal()" style="background:transparent; border:none; color:#94a3b8; font-size:1.5rem;">×</button>
+            </div>
+            <div id="export-form-area">
+                <label style="font-size: 0.85rem; color: #94a3b8;">Enter file name to save:</label>
+                <div class="filename-box">
+                    <input type="text" id="export-filename-input" value="studio_export_data" placeholder="Filename...">
+                    <span style="color:#64748b; padding-right:4px;">.json</span>
+                </div>
+                <button class="btn btn-export" style="margin-top: 18px;" onclick="startAnimatedExportProcess()">⚡ Proceed with Export</button>
+            </div>
+            <div id="export-loading-area" style="display: none;">
+                <div class="spinner-container">
+                    <div class="custom-spinner"></div>
+                    <p id="export-status-text" style="color: #38bdf8; font-size: 0.95rem; font-weight: bold;">Compiling structured database elements...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="storage-modal" class="modal-overlay" onclick="closeStorageModalOnOuter(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 style="color: white; font-size: 1.05rem;">Storage Index Manager</h3>
+                <button onclick="closeStorageModal()" style="background:transparent; border:none; color:#94a3b8; font-size:1.5rem;">×</button>
+            </div>
+            <ul class="saved-list" id="saved-list-container"></ul>
+            <button class="btn" style="background: #334155; color: white;" onclick="closeStorageModal()">Close Tab</button>
+        </div>
+    </div>
+
+    <div id="diff-modal" class="modal-overlay" onclick="if(event.target.id==='diff-modal') closeDiffModal()">
+        <div class="modal-box" style="max-height: 90vh;">
+            <div class="modal-header">
+                <h3 style="color: white; font-size: 1.05rem;">🔍 JSON Diff Checker</h3>
+                <button onclick="closeDiffModal()" style="background:transparent; border:none; color:#94a3b8; font-size:1.5rem;">×</button>
+            </div>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px;">Compare Main Editor Data (JSON A) with the workspace block below (JSON B):</p>
+            <textarea id="diff-json-b" spellcheck="false" placeholder="Paste the second JSON content structure here..." style="width: 100%; height: 100px; background: #090d16; border: 1px solid #22314d; border-radius: 8px; color: #f1f5f9; padding: 10px; font-family: monospace; font-size: 12px; outline: none; margin-bottom: 8px; resize: none;"></textarea>
+            <button class="btn" style="background: #38bdf8; color: #0f172a; padding: 10px; font-size: 0.9rem;" onclick="runDiffChecker()">⚡ Analyze Differences</button>
+            
+            <div class="panel-title" style="margin-top: 12px; margin-bottom: 4px;">Comparison Results (Red: Deleted/Diff | Green: Added lines)</div>
+            <div style="flex: 1; background: #05070f; border: 1px solid #22314d; border-radius: 8px; padding: 10px; overflow: auto;">
+                <div id="diff-results-output" style="font-family: monospace; font-size: 11px; line-height: 18px;">No comparisons run yet...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-msg" class="toast">Operation successful</div>
+
+    <footer>
+        Web engineered by <u>Lam</u> & <u>Gemini</u>
+        
+        <div class="rfc-container">
+            <details>
+                <summary>
+                    <span>📖 RFC 8259 - JavaScript Object Notation</span>
+                    <span style="font-size: 12px;">▼</span>
+                </summary>
+                <div class="rfc-content-box">
+                    <button class="btn" style="background: #1e293b; color: #a7f3d0; border: 1px solid #10b981; padding: 6px; font-size: 0.8rem; margin-bottom: 10px;" onclick="downloadRFC()">📥 Download RFC-8259_JSON.txt</button>
+                    <pre id="rfc-text-content" class="rfc-text-pre">Internet Engineering Task Force (IETF)                      T. Bray, Ed.
+Request for Comments: 8259                                    Textuality
+Obsoletes: 7159                                            December 2017
+Category: Standards Track
+ISSN: 2070-1721
+
+
+     The JavaScript Object Notation (JSON) Data Interchange Format
+
+Abstract
+
+   JavaScript Object Notation (JSON) is a lightweight, text-based,
+   language-independent data interchange format.  It was derived from
+   the ECMAScript Programming Language Standard.  JSON defines a small
+   set of formatting rules for the portable representation of structured
+   data.
+
+   This document removes inconsistencies with other specifications of
+   JSON, repairs specification errors, and offers experience-based
+   interoperability guidance.
+
+Status of This Memo
+
+   This is an Internet Standards Track document.
+
+   This document is a product of the Internet Engineering Task Force
+   (IETF).  It represents the consensus of the IETF community.  It has
+   received public review and has been approved for publication by the
+   Internet Engineering Steering Group (IESG).  Further information on
+   Internet Standards is available in Section 2 of RFC 7841.
+
+   Information about the current status of this document, any errata,
+   and how to provide feedback on it may be obtained at
+   &lt;https://www.rfc-editor.org/info/rfc8259&gt;.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bray                         Standards Track                    [Page 1]
+
+RFC 8259                          JSON                     December 2017
+
+
+Copyright Notice
+
+   Copyright (c) 2017 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (&lt;https://trustee.ietf.org/license-info&gt;) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+   This document may contain material from IETF Documents or IETF
+   Contributions published or made publicly available before November
+   10, 2008.  The person(s) controlling the copyright in some of this
+   material may not have granted the IETF Trust the right to allow
+   modifications of such material outside the IETF Standards Process.
+   Without obtaining an adequate license from the person(s) controlling
+   the copyright in such materials, this document may not be modified
+   outside the IETF Standards Process, and derivative works of it may
+   not be created outside the IETF Standards Process, except to format
+   it for publication as an RFC or to translate it into languages other
+   than English.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bray                         Standards Track                    [Page 2]
+
+RFC 8259                          JSON                     December 2017
+
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Conventions Used in This Document . . . . . . . . . . . .   4
+     1.2.  Specifications of JSON  . . . . . . . . . . . . . . . . .   4
+     1.3.  Introduction to This Revision . . . . . . . . . . . . . .   5
+   2.  JSON Grammar  . . . . . . . . . . . . . . . . . . . . . . . .   5
+   3.  Values  . . . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   4.  Objects . . . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   5.  Arrays  . . . . . . . . . . . . . . . . . . . . . . . . . . .   7
+   6.  Numbers . . . . . . . . . . . . . . . . . . . . . . . . . . .   7
+   7.  Strings . . . . . . . . . . . . . . . . . . . . . . . . . . .   8
+   8.  String and Character Issues . . . . . . . . . . . . . . . . .   9
+     8.1.  Character Encoding  . . . . . . . . . . . . . . . . . . .   9
+     8.2.  Unicode Characters  . . . . . . . . . . . . . . . . . . .  10
+     8.3.  String Comparison . . . . . . . . . . . . . . . . . . . .  10
+   9.  Parsers . . . . . . . . . . . . . . . . . . . . . . . . . . .  10
+   10. Generators  . . . . . . . . . . . . . . . . . . . . . . . . .  10
+   11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  11
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  12
+   13. Examples  . . . . . . . . . . . . . . . . . . . . . . . . . .  12
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  14
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  14
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  14
+   Appendix A.  Changes from RFC 7159  . . . . . . . . . . . . . . .  16
+   Contributors  . . . . . . . . . . . . . . . . . . . . . . . . . .  16
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  16
+
+1.  Introduction
+
+   JavaScript Object Notation (JSON) is a text format for the
+   serialization of structured data.  It is derived from the object
+   literals of JavaScript, as defined in the ECMAScript Programming
+   Language Standard, Third Edition [ECMA-262].
+
+   JSON can represent four primitive types (strings, numbers, booleans,
+   and null) and two structured types (objects and arrays).
+
+   A string is a sequence of zero or more Unicode characters [UNICODE].
+   Note that this citation references the latest version of Unicode
+   rather than a specific release.  It is not expected that future
+   changes in the Unicode specification will impact the syntax of JSON.
+
+   An object is an unordered collection of zero or more name/value
+   pairs, where a name is a string and a value is a string, number,
+   boolean, null, object, or array.
+
+   An array is an ordered sequence of zero or more values.
+
+
+
+Bray                         Standards Track                    [Page 3]
+
+RFC 8259                          JSON                     December 2017
+
+
+   The terms "object" and "array" come from the conventions of
+   JavaScript.
+
+   JSON's design goals were for it to be minimal, portable, textual, and
+   a subset of JavaScript.
+
+1.1.  Conventions Used in This Document
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   The grammatical rules in this document are to be interpreted as
+   described in [RFC5234].
+
+1.2.  Specifications of JSON
+
+   This document replaces [RFC7159].  [RFC7159] obsoleted [RFC4627],
+   which originally described JSON and registered the media type
+   "application/json".
+
+   JSON is also described in [ECMA-404].
+
+   The reference to ECMA-404 in the previous sentence is normative, not
+   with the usual meaning that implementors need to consult it in order
+   to understand this document, but to emphasize that there are no
+   inconsistencies in the definition of the term "JSON text" in any of
+   its specifications.  Note, however, that ECMA-404 allows several
+   practices that this specification recommends avoiding in the
+   interests of maximal interoperability.
+
+   The intent is that the grammar is the same between the two documents,
+   although different descriptions are used.  If there is a difference
+   found between them, ECMA and the IETF will work together to update
+   both documents.
+
+   If an error is found with either document, the other should be
+   examined to see if it has a similar error; if it does, it should be
+   fixed, if possible.
+
+   If either document is changed in the future, ECMA and the IETF will
+   work together to ensure that the two documents stay aligned through
+   the change.
+
+
+
+
+
+
+Bray                         Standards Track                    [Page 4]
+
+RFC 8259                          JSON                     December 2017
+
+
+1.3.  Introduction to This Revision
+
+   In the years since the publication of RFC 4627, JSON has found very
+   wide use.  This experience has revealed certain patterns that, while
+   allowed by its specifications, have caused interoperability problems.
+
+   Also, a small number of errata have been reported regarding RFC 4627
+   (see RFC Errata IDs 607 [Err607] and 3607 [Err3607]) and regarding
+   RFC 7159 (see RFC Errata IDs 3915 [Err3915], 4264 [Err4264], 4336
+   [Err4336], and 4388 [Err4388]).
+
+   This document's goal is to apply the errata, remove inconsistencies
+   with other specifications of JSON, and highlight practices that can
+   lead to interoperability problems.
+
+2.  JSON Grammar
+
+   A JSON text is a sequence of tokens.  The set of tokens includes six
+   structural characters, strings, numbers, and three literal names.
+
+   A JSON text is a serialized value.  Note that certain previous
+   specifications of JSON constrained a JSON text to be an object or an
+   array.  Implementations that generate only objects or arrays where a
+   JSON text is called for will be interoperable in the sense that all
+   implementations will accept these as conforming JSON texts.
+
+      JSON-text = ws value ws
+
+   These are the six structural characters:
+
+      begin-array     = ws %x5B ws  ; [ left square bracket
+
+      begin-object    = ws %x7B ws  ; { left curly bracket
+
+      end-array       = ws %x5D ws  ; ] right square bracket
+
+      end-object      = ws %x7D ws  ; } right curly bracket
+
+      name-separator  = ws %x3A ws  ; : colon
+
+      value-separator = ws %x2C ws  ; , comma
+
+
+
+
+
+
+
+
+
+
+Bray                         Standards Track                    [Page 5]
+
+RFC 8259                          JSON                     December 2017
+
+
+   Insignificant whitespace is allowed before or after any of the six
+   structural characters.
+
+      ws = *(
+              %x20 /              ; Space
+              %x09 /              ; Horizontal tab
+              %x0A /              ; Line feed or New line
+              %x0D )              ; Carriage return
+
+3.  Values
+
+   A JSON value MUST be an object, array, number, or string, or one of
+   the following three literal names:
+
+      false
+      null
+      true
+
+   The literal names MUST be lowercase.  No other literal names are
+   allowed.
+
+      value = false / null / true / object / array / number / string
+
+      false = %x66.61.6c.73.65   ; false
+
+      null  = %x6e.75.6c.6c      ; null
+
+      true  = %x74.72.75.65      ; true
+
+4.  Objects
+
+   An object structure is represented as a pair of curly brackets
+   surrounding zero or more name/value pairs (or members).  A name is a
+   string.  A single colon comes after each name, separating the name
+   from the value.  A single comma separates a value from a following
+   name.  The names within an object SHOULD be unique.
+
+      object = begin-object [ member *( value-separator member ) ]
+               end-object
+
+      member = string name-separator value
+
+   An object whose names are all unique is interoperable in the sense
+   that all software implementations receiving that object will agree on
+   the name-value mappings.  When the names within an object are not
+   unique, the behavior of software that receives such an object is
+   unpredictable.  Many implementations report the last name/value pair
+   only.  Other implementations report an error or fail to parse the
+
+
+
+Bray                         Standards Track                    [Page 6]
+
+RFC 8259                          JSON                     December 2017
+
+
+   object, and some implementations report all of the name/value pairs,
+   including duplicates.
+
+   JSON parsing libraries have been observed to differ as to whether or
+   not they make the ordering of object members visible to calling
+   software.  Implementations whose behavior does not depend on member
+   ordering will be interoperable in the sense that they will not be
+   affected by these differences.
+
+5.  Arrays
+
+   An array structure is represented as square brackets surrounding zero
+   or more values (or elements).  Elements are separated by commas.
+
+   array = begin-array [ value *( value-separator value ) ] end-array
+
+   There is no requirement that the values in an array be of the same
+   type.
+
+6.  Numbers
+
+   The representation of numbers is similar to that used in most
+   programming languages.  A number is represented in base 10 using
+   decimal digits.  It contains an integer component that may be
+   prefixed with an optional minus sign, which may be followed by a
+   fraction part and/or an exponent part.  Leading zeros are not
+   allowed.
+
+   A fraction part is a decimal point followed by one or more digits.
+
+   An exponent part begins with the letter E in uppercase or lowercase,
+   which may be followed by a plus or minus sign.  The E and optional
+   sign are followed by one or more digits.
+
+   Numeric values that cannot be represented in the grammar below (such
+   as Infinity and NaN) are not permitted.
+
+      number = [ minus ] int [ frac ] [ exp ]
+
+      decimal-point = %x2E       ; .
+
+      digit1-9 = %x31-39         ; 1-9
+
+      e = %x65 / %x45            ; e E
+
+      exp = e [ minus / plus ] 1*DIGIT
+
+      frac = decimal-point 1*DIGIT
+
+
+
+Bray                         Standards Track                    [Page 7]
+
+RFC 8259                          JSON                     December 2017
+
+
+      int = zero / ( digit1-9 *DIGIT )
+
+      minus = %x2D               ; -
+
+      plus = %x2B                ; +
+
+      zero = %x30                ; 0
+
+   This specification allows implementations to set limits on the range
+   and precision of numbers accepted.  Since software that implements
+   IEEE 754 binary64 (double precision) numbers [IEEE754] is generally
+   available and widely used, good interoperability can be achieved by
+   implementations that expect no more precision or range than these
+   provide, in the sense that implementations will approximate JSON
+   numbers within the expected precision.  A JSON number such as 1E400
+   or 3.141592653589793238462643383279 may indicate potential
+   interoperability problems, since it suggests that the software that
+   created it expects receiving software to have greater capabilities
+   for numeric magnitude and precision than is widely available.
+
+   Note that when such software is used, numbers that are integers and
+   are in the range [-(2**53)+1, (2**53)-1] are interoperable in the
+   sense that implementations will agree exactly on their numeric
+   values.
+
+7.  Strings
+
+   The representation of strings is similar to conventions used in the C
+   family of programming languages.  A string begins and ends with
+   quotation marks.  All Unicode characters may be placed within the
+   quotation marks, except for the characters that MUST be escaped:
+   quotation mark, reverse solidus, and the control characters (U+0000
+   through U+001F).
+
+   Any character may be escaped.  If the character is in the Basic
+   Multilingual Plane (U+0000 through U+FFFF), then it may be
+   represented as a six-character sequence: a reverse solidus, followed
+   by the lowercase letter u, followed by four hexadecimal digits that
+   encode the character's code point.  The hexadecimal letters A through
+   F can be uppercase or lowercase.  So, for example, a string
+   containing only a single reverse solidus character may be represented
+   as "\u005C".
+
+   Alternatively, there are two-character sequence escape
+   representations of some popular characters.  So, for example, a
+   string containing only a single reverse solidus character may be
+   represented more compactly as "\\".
+
+
+
+
+Bray                         Standards Track                    [Page 8]
+
+RFC 8259                          JSON                     December 2017
+
+
+   To escape an extended character that is not in the Basic Multilingual
+   Plane, the character is represented as a 12-character sequence,
+   encoding the UTF-16 surrogate pair.  So, for example, a string
+   containing only the G clef character (U+1D11E) may be represented as
+   "\uD834\uDD1E".
+
+      string = quotation-mark *char quotation-mark
+
+      char = unescaped /
+          escape (
+              %x22 /          ; "    quotation mark  U+0022
+              %x5C /          ; \    reverse solidus U+005C
+              %x2F /          ; /    solidus         U+002F
+              %x62 /          ; b    backspace       U+0008
+              %x66 /          ; f    form feed       U+000C
+              %x6E /          ; n    line feed       U+000A
+              %x72 /          ; r    carriage return U+000D
+              %x74 /          ; t    tab             U+0009
+              %x75 4HEXDIG )  ; uXXXX                U+XXXX
+
+      escape = %x5C              ; \
+
+      quotation-mark = %x22      ; "
+
+      unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
+
+8.  String and Character Issues
+
+8.1.  Character Encoding
+
+   JSON text exchanged between systems that are not part of a closed
+   ecosystem MUST be encoded using UTF-8 [RFC3629].
+
+   Previous specifications of JSON have not required the use of UTF-8
+   when transmitting JSON text.  However, the vast majority of JSON-
+   based software implementations have chosen to use the UTF-8 encoding,
+   to the extent that it is the only encoding that achieves
+   interoperability.
+
+   Implementations MUST NOT add a byte order mark (U+FEFF) to the
+   beginning of a networked-transmitted JSON text.  In the interests of
+   interoperability, implementations that parse JSON texts MAY ignore
+   the presence of a byte order mark rather than treating it as an
+   error.
+
+
+
+
+
+
+
+Bray                         Standards Track                    [Page 9]
+
+RFC 8259                          JSON                     December 2017
+
+
+8.2.  Unicode Characters
+
+   When all the strings represented in a JSON text are composed entirely
+   of Unicode characters [UNICODE] (however escaped), then that JSON
+   text is interoperable in the sense that all software implementations
+   that parse it will agree on the contents of names and of string
+   values in objects and arrays.
+
+   However, the ABNF in this specification allows member names and
+   string values to contain bit sequences that cannot encode Unicode
+   characters; for example, "\uDEAD" (a single unpaired UTF-16
+   surrogate).  Instances of this have been observed, for example, when
+   a library truncates a UTF-16 string without checking whether the
+   truncation split a surrogate pair.  The behavior of software that
+   receives JSON texts containing such values is unpredictable; for
+   example, implementations might return different values for the length
+   of a string value or even suffer fatal runtime exceptions.
+
+8.3.  String Comparison
+
+   Software implementations are typically required to test names of
+   object members for equality.  Implementations that transform the
+   textual representation into sequences of Unicode code units and then
+   perform the comparison numerically, code unit by code unit, are
+   interoperable in the sense that implementations will agree in all
+   cases on equality or inequality of two strings.  For example,
+   implementations that compare strings with escaped characters
+   unconverted may incorrectly find that "a\\b" and "a\u005Cb" are not
+   equal.
+
+9.  Parsers
+
+   A JSON parser transforms a JSON text into another representation.  A
+   JSON parser MUST accept all texts that conform to the JSON grammar.
+   A JSON parser MAY accept non-JSON forms or extensions.
+
+   An implementation may set limits on the size of texts that it
+   accepts.  An implementation may set limits on the maximum depth of
+   nesting.  An implementation may set limits on the range and precision
+   of numbers.  An implementation may set limits on the length and
+   character contents of strings.
+
+10.  Generators
+
+   A JSON generator produces JSON text.  The resulting text MUST
+   strictly confor to the JSON grammar.
+
+
+
+
+
+Bray                         Standards Track                   [Page 10]
+
+RFC 8259                          JSON                     December 2017
+
+
+11.  IANA Considerations
+
+   The media type for JSON text is application/json.
+
+   Type name:  application
+
+   Subtype name:  json
+
+   Required parameters:  n/a
+
+   Optional parameters:  n/a
+
+   Encoding considerations:  binary
+
+   Security considerations:  See RFC 8259, Section 12
+
+   Interoperability considerations:  Described in RFC 8259
+
+   Published specification:  RFC 8259
+
+   Applications that use this media type:
+      JSON has been used to exchange data between applications written
+      in all of these programming languages: ActionScript, C, C#,
+      Clojure, ColdFusion, Common Lisp, E, Erlang, Go, Java, JavaScript,
+      Lua, Objective CAML, Perl, PHP, Python, Rebol, Ruby, Scala, and
+      Scheme.
+
+   Additional information:
+      Magic number(s): n/a
+      File extension(s): .json
+      Macintosh file type code(s): TEXT
+
+   Person &amp; email address to contact for further information:
+      IESG
+      &lt;iesg@ietf.org&gt;
+
+   Intended usage:  COMMON
+
+   Restrictions on usage:  none
+
+   Author:
+      Douglas Crockford
+      &lt;douglas@crockford.com&gt;
+
+   Change controller:
+      IESG
+      &lt;iesg@ietf.org&gt;
+
+
+
+
+Bray                         Standards Track                   [Page 11]
+
+RFC 8259                          JSON                     December 2017
+
+
+   Note:  No "charset" parameter is defined for this registration.
+      Adding one really has no effect on compliant recipients.
+
+12.  Security Considerations
+
+   Generally, there are security issues with scripting languages.  JSON
+   is a subset of JavaScript but excludes assignment and invocation.
+
+   Since JSON's syntax is borrowed from JavaScript, it is possible to
+   use that language's "eval()" function to parse most JSON texts (but
+   not all; certain characters such as U+2028 LINE SEPARATOR and U+2029
+   PARAGRAPH SEPARATOR are legal in JSON but not JavaScript).  This
+   generally constitutes an unacceptable security risk, since the text
+   could contain executable code along with data declarations.  The same
+   consideration applies to the use of eval()-like functions in any
+   other programming language in which JSON texts conform to that
+   language's syntax.
+
+13.  Examples
+
+   This is a JSON object:
+
+      {
+        "Image": {
+            "Width":  800,
+            "Height": 600,
+            "Title":  "View from 15th Floor",
+            "Thumbnail": {
+                "Url":    "http://www.example.com/image/481989943",
+                "Height": 125,
+                "Width":  100
+            },
+            "Animated" : false,
+            "IDs": [116, 943, 234, 38793]
+          }
+      }
+
+   Its Image member is an object whose Thumbnail member is an object and
+   whose IDs member is an array of numbers.
+
+
+
+
+
+
+
+
+
+
+
+
+Bray                         Standards Track                   [Page 12]
+
+RFC 8259                          JSON                     December 2017
+
+
+   This is a JSON array containing two objects:
+
+      [
+        {
+           "precision": "zip",
+           "Latitude":  37.7668,
+           "Longitude": -122.3959,
+           "Address":   "",
+           "City":      "SAN FRANCISCO",
+           "State":     "CA",
+           "Zip":       "94107",
+           "Country":   "US"
+        },
+        {
+           "precision": "zip",
+           "Latitude":  37.371991,
+           "Longitude": -122.026020,
+           "Address":   "",
+           "City":      "SUNNYVALE",
+           "State":     "CA",
+           "Zip":       "94085",
+           "Country":   "US"
+        }
+      ]
+
+   Here are three small JSON texts containing only values:
+
+   "Hello world!"
+
+   42
+
+   true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bray                         Standards Track                   [Page 13]
+
+RFC 8259                          JSON                     December 2017
+
+
+14.  References
+
+14.1.  Normative References
+
+   [ECMA-404] Ecma International, "The JSON Data Interchange Format",
+              Standard ECMA-404,
+              &lt;http://www.ecma-international.org/publications/
+              standards/Ecma-404.htm&gt;.
+
+   [IEEE754]  IEEE, "IEEE Standard for Floating-Point Arithmetic",
+              IEEE 754.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              &lt;https://www.rfc-editor.org/info/rfc2119&gt;.
+
+   [RFC3629]  Yergeau, F., "UTF-8, a transformation format of ISO
+              10646", STD 63, RFC 3629, DOI 10.17487/RFC3629, November
+              2003, &lt;https://www.rfc-editor.org/info/rfc3629&gt;.
+
+   [RFC5234]  Crocker, D., Ed. and P. Overell, "Augmented BNF for Syntax
+              Specifications: ABNF", STD 68, RFC 5234,
+              DOI 10.17487/RFC5234, January 2008,
+              &lt;https://www.rfc-editor.org/info/rfc5234&gt;.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, &lt;https://www.rfc-editor.org/info/rfc8174&gt;.
+
+   [UNICODE]  The Unicode Consortium, "The Unicode Standard",
+              &lt;http://www.unicode.org/versions/latest/&gt;.
+
+14.2.  Informative References
+
+   [ECMA-262] Ecma International, "ECMAScript Language Specification",
+              Standard ECMA-262, Third Edition, December 1999,
+              &lt;http://www.ecma-international.org/publications/files/
+              ECMA-ST-ARCH/
+              ECMA-262,%203rd%20edition,%20December%201999.pdf&gt;.
+
+   [Err3607]  RFC Errata, Erratum ID 3607, RFC 4627,
+              &lt;https://www.rfc-editor.org/errata/eid3607&gt;.
+
+   [Err3915]  RFC Errata, Erratum ID 3915, RFC 7159,
+              &lt;https://www.rfc-editor.org/errata/eid3915&gt;.
+
+
+
+
+
+Bray                         Standards Track                   [Page 14]
+
+RFC 8259                          JSON                     December 2017
+
+
+   [Err4264]  RFC Errata, Erratum ID 4264, RFC 7159,
+              &lt;https://www.rfc-editor.org/errata/eid4264&gt;.
+
+   [Err4336]  RFC Errata, Erratum ID 4336, RFC 7159,
+              &lt;https://www.rfc-editor.org/errata/eid4336&gt;.
+
+   [Err4388]  RFC Errata, Erratum ID 4388, RFC 7159,
+              &lt;https://www.rfc-editor.org/errata/eid4388&gt;.
+
+   [Err607]   RFC Errata, Erratum ID 607, RFC 4627,
+              &lt;https://www.rfc-editor.org/errata/eid607&gt;.
+
+   [RFC4627]  Crockford, D., "The application/json Media Type for
+              JavaScript Object Notation (JSON)", RFC 4627,
+              DOI 10.17487/RFC4627, July 2006,
+              &lt;https://www.rfc-editor.org/info/rfc4627&gt;.
+
+   [RFC7159]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
+              Interchange Format", RFC 7159, DOI 10.17487/RFC7159, March
+              2014, &lt;https://www.rfc-editor.org/info/rfc7159&gt;.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bray                         Standards Track                   [Page 15]
+
+RFC 8259                          JSON                     December 2017
+
+
+Appendix A.  Changes from RFC 7159
+
+   This section lists changes between this document and the text in
+   RFC 7159.
+
+   o  Section 1.2 has been updated to reflect the removal of a JSON
+      specification from ECMA-262, to make ECMA-404 a normative
+      reference, and to explain the particular meaning of "normative".
+
+   o  Section 1.3 has been updated to reflect errata filed against
+      RFC 7159, not RFC 4627.
+
+   o  Section 8.1 was changed to require the use of UTF-8 when
+      transmitted over a network.
+
+   o  Section 12 has been updated to increase the precision of the
+      description of the security risk that follows from using the
+      ECMAScript "eval()" function.
+
+   o  Section 14.1 has been updated to include ECMA-404 as a normative
+      reference.
+
+   o  Section 14.2 has been updated to remove ECMA-404, update the
+      version of ECMA-262, and refresh the errata list.
+
+Contributors
+
+   RFC 4627 was written by Douglas Crockford.  This document was
+   constructed by making a relatively small number of changes to that
+   document; thus, the vast majority of the text here is his.
+
+Author's Address
+
+   Tim Bray (editor)
+   Textuality
+
+   Email: tbray@textuality.com              
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bray                         Standards Track                   [Page 16]</pre>
+                </div>
+            </details>
+        </div>
+    </footer>
+
+    <script>
+        const jsonInput = document.getElementById('json-input');
+        const jsonHighlight = document.getElementById('json-highlight');
+        const lineNumbers = document.getElementById('line-numbers');
+        const linterStatus = document.getElementById('linter-status');
+        const errorLog = document.getElementById('error-log');
+        const structureOutput = document.getElementById('structure-output');
+
+        let currentInterpretMode = 'default';
+        let isDirty = false;
+        let currentTargetFormat = ''; 
+        let currentModelLang = '';
+        let syntaxTimeout = null;
+
+        function setMode(mode) {
+            currentInterpretMode = mode;
+            document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`mode-${mode}`).classList.add('active');
+            showToast(`🔄 Mode changed: ${mode.toUpperCase()}`);
+            onEditorInput();
+        }
+
+        function highlightJSON(rawStr) {
+            if (!rawStr) return "";
+            let cleanStr = rawStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const jsonRegex = /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|[\[\]\{\}])/g;
+            return cleanStr.replace(jsonRegex, function (match) {
+                let cls = '';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) { cls = 'json-key'; return `<span class="${cls}">${match.replace(/:$/, '')}</span>:`; } 
+                    else { cls = 'json-value'; }
+                } else if (/true|false|null|^-?\d+/.test(match)) { cls = 'json-value'; }
+                else if (/[\[\]]/.test(match)) { cls = 'json-array'; }
+                else if (/[\{\}]/.test(match)) { cls = 'json-object'; }
+                return `<span class="${cls}">${match}</span>`;
+            });
+        }
+
+        function onEditorInput() {
+            const value = jsonInput.value;
+            const sizeKB = value.length / 1024;
+            
+            if (sizeKB > 250) { 
+                jsonInput.style.setProperty('color', '#cbd5e1', 'important');
+                jsonInput.style.setProperty('-webkit-text-fill-color', '#cbd5e1', 'important');
+                jsonHighlight.style.display = 'none'; lineNumbers.style.display = 'none';
+                linterStatus.innerText = `⚡ Large file (${sizeKB.toFixed(1)} KB) - RAM Optimized`;
+                linterStatus.style.color = "#eab308";
+            } else {
+                jsonInput.style.setProperty('color', 'transparent', 'important');
+                jsonInput.style.setProperty('-webkit-text-fill-color', 'transparent', 'important');
+                jsonHighlight.style.display = 'block'; lineNumbers.style.display = 'block';
+
+                let highlighted = highlightJSON(value);
+                if (value.endsWith('\n')) { highlighted += '\n '; }
+                jsonHighlight.innerHTML = highlighted;
+
+                const totalLines = value.split('\n').length;
+                let lineNumbersHTML = '';
+                for (let i = 1; i <= totalLines; i++) { lineNumbersHTML += i + '<br>'; }
+                lineNumbers.innerHTML = lineNumbersHTML;
+            }
+            if (value.trim()) isDirty = true;
+            clearTimeout(syntaxTimeout);
+            syntaxTimeout = setTimeout(() => { checkJsonSyntax(value); syncEditorScroll(); evaluateJsonPath(); }, 300);
+        }
+
+        function formatJsonCode() {
+            const value = jsonInput.value; if (!value.trim()) return;
+            try {
+                const parsed = JSON.parse(value); const indentType = document.getElementById('indent-select').value;
+                let indentSpacer = indentType === 'tab' ? '\t' : parseInt(indentType);
+                jsonInput.value = JSON.stringify(parsed, null, indentSpacer); onEditorInput(); showToast("✨ Structured indent code successfully applied!");
+            } catch (err) { alert("Format Error: " + err.message); }
+        }
+
+        function minifyJsonCode() {
+            const value = jsonInput.value; if (!value.trim()) return;
+            try {
+                const parsed = JSON.parse(value); jsonInput.value = JSON.stringify(parsed); onEditorInput(); showToast("🗜️ Minified code!");
+            } catch (err) { alert("Minify Error: " + err.message); }
+        }
+
+        function checkJsonSyntax(value) {
+            if (!value.trim()) { setLinterState(true, "System Ready."); linterStatus.innerText = "● Empty"; linterStatus.style.color = "#94a3b8"; return; }
+            try {
+                const parsed = JSON.parse(value);
+                if (currentInterpretMode === 'schema') validateJsonSchemaKeys(parsed);
+                else if (currentInterpretMode === 'geo') validateGeoJsonKeys(parsed);
+                setLinterState(true, `Syntax [${currentInterpretMode.toUpperCase()}] is standard.`);
+            } catch (err) {
+                const errorMsg = err.message; let lineNum = "X";
+                const posMatch = errorMsg.match(/position (\d+)/);
+                if (posMatch) lineNum = value.substring(0, parseInt(posMatch[1])).split('\n').length;
+                setLinterState(false, `Line ${lineNum}: ${errorMsg}`);
+            }
+        }
+
+        function validateJsonSchemaKeys(parsed) { if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error("JSON Schema requires Object {}"); }
+        function validateGeoJsonKeys(parsed) { if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed) || !parsed.type) throw new Error("GeoJSON requires 'type' property"); }
+
+        function setLinterState(isValid, message) {
+            if (isValid) {
+                if (jsonInput.value.length / 1024 <= 250) { linterStatus.innerText = "● Valid"; linterStatus.style.color = "#10b981"; }
+                errorLog.innerText = message; errorLog.classList.remove('danger');
+            } else {
+                linterStatus.innerText = "● Syntax Error"; linterStatus.style.color = "#ef4444";
+                errorLog.innerText = message; errorLog.classList.add('danger');
+            }
+        }
+
+        function syncEditorScroll() { jsonHighlight.scrollTop = jsonInput.scrollTop; jsonHighlight.scrollLeft = jsonInput.scrollLeft; lineNumbers.scrollTop = jsonInput.scrollTop; }
+        function clearAllCode() { if (isDirty && jsonInput.value.trim() !== "" && !confirm("⚠️ Clear workspace?")) return; jsonInput.value = ""; isDirty = false; onEditorInput(); showToast("🧹 Cleared."); }
+
+        function openExportModal() { if (!jsonInput.value.trim()) { alert("Empty!"); return; } document.getElementById('export-form-area').style.display = 'block'; document.getElementById('export-loading-area').style.display = 'none'; document.getElementById('export-modal').classList.add('active'); }
+        function closeExportModal() { document.getElementById('export-modal').classList.remove('active'); }
+        function closeExportModalOnOuter(e) { if (e.target.id === 'export-modal') closeExportModal(); }
+
+        function startAnimatedExportProcess() {
+            const filename = document.getElementById('export-filename-input').value.trim() || "studio_export";
+            document.getElementById('export-form-area').style.display = 'none'; document.getElementById('export-loading-area').style.display = 'flex';
+            setTimeout(() => { executeBlobDownload(jsonInput.value, `${filename}.json`, 'application/json'); isDirty = false; closeExportModal(); showToast("📤 Exported!"); }, 1400);
+        }
+
+        function executeBlobDownload(content, filename, contentType) { const blob = new Blob([content], { type: contentType }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); }
+
+        function generateStructure() {
+            try { const parsed = JSON.parse(jsonInput.value); structureOutput.innerText = runTreeCompiler(parsed, 0, true); showToast("⚡ Interpreted!"); } 
+            catch (err) { structureOutput.innerText = `[FAILURE]: ${err.message}`; }
+        }
+
+        function runTreeCompiler(obj, indent = 0, isRoot = false) {
+            let res = "";
+            if (isRoot) {
+                if (Array.isArray(obj)) res += "array: root <\n";
+                else if (typeof obj === 'object' && obj !== null) res += "object: 1 <\n";
+                else return typeof obj + ": " + obj;
+            }
+            if (Array.isArray(obj)) {
+                if (obj.every(el => typeof el !== 'object' || el === null)) { res += "  ".repeat(indent) + obj.join(', ') + "\n"; } 
+                else { obj.forEach((child, idx) => { res += "  ".repeat(indent) + (Array.isArray(child) ? `array: [${idx + 1}] <\n` : `object: ${idx + 1} <\n`) + runTreeCompiler(child, indent + 1, false) + "  ".repeat(indent) + ">\n"; }); }
+            } else if (typeof obj === 'object' && obj !== null) {
+                for (let key in obj) {
+                    let val = obj[key];
+                    if (Array.isArray(val)) { res += "  ".repeat(indent) + `array: ${key} <\n` + runTreeCompiler(val, indent + 1, false) + "  ".repeat(indent) + `>\n`; } 
+                    else if (typeof val === 'object' && val !== null) { res += "  ".repeat(indent) + `object: ${key} <\n` + runTreeCompiler(val, indent + 1, false) + "  ".repeat(indent) + `>\n`; } 
+                    else { res += "  ".repeat(indent) + `key: ${key}, value: ${val}\n`; }
+                }
+            }
+            if (isRoot) res += ">"; return res;
+        }
+
+        function exportStructureText() { executeBlobDownload(structureOutput.innerText, "interpret_tree.txt", "text/plain"); }
+        function triggerImport() { document.getElementById('file-import').click(); }
+        function handleFileImport(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(e) { jsonInput.value = e.target.result; isDirty = false; onEditorInput(); showToast("📥 Imported!"); }; reader.readAsText(file); }
+
+        const STORAGE_KEY = "json_mobile_studio_v5";
+        function openStorageModal() { document.getElementById('storage-modal').classList.add('active'); renderSavedList(); }
+        function closeStorageModal() { document.getElementById('storage-modal').classList.remove('active'); }
+        function closeStorageModalOnOuter(e) { if (e.target.id === 'storage-modal') closeStorageModal(); }
+        function getSaves() { let item = localStorage.getItem(STORAGE_KEY); return item ? JSON.parse(item) : {}; }
+        function promptSaveCode() { let name = prompt("Archive label:"); if (!name || !name.trim()) return; let saves = getSaves(); saves[name.trim()] = jsonInput.value; localStorage.setItem(STORAGE_KEY, JSON.stringify(saves)); isDirty = false; showToast(`💾 Saved: ${name}`); }
+        function loadSavedIndex(key) { let saves = getSaves(); if (saves[key] !== undefined) { jsonInput.value = saves[key]; isDirty = false; onEditorInput(); closeStorageModal(); showToast(`📂 Opened: ${key}`); } }
+        function deleteSavedIndex(key) { if (confirm(`Purge "${key}"?`)) { let saves = getSaves(); delete saves[key]; localStorage.setItem(STORAGE_KEY, JSON.stringify(saves)); renderSavedList(); } }
+        function renderSavedList() { const container = document.getElementById('saved-list-container'); const saves = getSaves(); container.innerHTML = ""; let keys = Object.keys(saves); if (keys.length === 0) { container.innerHTML = `<li style="color:#64748b; text-align:center; padding:20px;">Empty</li>`; return; } keys.forEach(key => { let li = document.createElement('li'); li.className = "saved-item"; li.innerHTML = `<span class="saved-item-name">${key}</span><div class="saved-item-actions"><button class="btn-sm" style="background:#10b981; color:white;" onclick="loadSavedIndex('${key}')">Open</button><button class="btn-sm" style="background:#ef4444; color:white;" onclick="deleteSavedIndex('${key}')">Delete</button></div>`; container.appendChild(li); }); }
+
+        function copyMainJsonCode() { navigator.clipboard.writeText(jsonInput.value).then(() => showToast("📋 Copied!")); }
+
+        async function fetchJsonFromUrl() {
+            const url = document.getElementById('api-url-input').value.trim(); if(!url) return;
+            try { showToast("⏳ Calling server..."); const res = await fetch(url); if(!res.ok) throw new Error(res.status); const data = await res.json(); jsonInput.value = JSON.stringify(data, null, 2); onEditorInput(); showToast("📥 Fetched!"); } 
+            catch(err) { alert("Fetch Error: " + err.message); }
+        }
+
+        async function pushJsonToServer() {
+            const targetUrl = document.getElementById('server-url-input').value.trim(); const currentPayload = jsonInput.value.trim();
+            if (!targetUrl || !currentPayload) { alert("Missing URL or Payload."); return; }
+            try { JSON.parse(currentPayload); } catch (err) { if (!confirm("⚠️ Syntax error. Push anyway?")) return; }
+            try {
+                showToast("🚀 Pushing payload...");
+                const response = await fetch(targetUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: currentPayload });
+                if (response.ok) { showToast("✅ Stream transmitted!"); errorLog.innerText = `[POST SUCCESS]: ${response.status}`; errorLog.classList.remove('danger'); } 
+                else throw new Error(response.statusText);
+            } catch (err) { alert("Push Error: " + err.message); errorLog.innerText = `[POST FAILURE]: ${err.message}`; errorLog.classList.add('danger'); }
+        }
+
+        function evaluateJsonPath() {
+            const path = document.getElementById('jsonpath-input').value.trim(); const outputBox = document.getElementById('jsonpath-output');
+            if (!jsonInput.value.trim() || !path) { outputBox.innerText = "Waiting..."; return; }
+            try {
+                let parsed = JSON.parse(jsonInput.value); let currentScope = parsed;
+                let normalized = path.replace(/\[(\d+|\*)\]/g, '.$1').replace(/^\./, '');
+                const segments = normalized.split('.').filter(s => s);
+                for (let seg of segments) {
+                    if (currentScope == null) break;
+                    if (seg === '*') currentScope = Array.isArray(currentScope) ? currentScope : Object.values(currentScope);
+                    else currentScope = currentScope[seg];
+                }
+                outputBox.innerText = JSON.stringify(currentScope, null, 2);
+            } catch (e) { outputBox.innerText = "Error: " + e.message; }
+        }
+
+        function generateModel(lang) {
+            try {
+                currentModelLang = lang; const parsed = JSON.parse(jsonInput.value); let result = "";
+                if (lang === 'ts') result = compileToTypeScript(parsed, "RootObject");
+                else if (lang === 'dart') result = compileToDartClass(parsed, "RootModel");
+                else if (lang === 'py') result = compileToPythonDataClass(parsed, "RootModel");
+                document.getElementById('model-text-output').innerText = result; document.getElementById('model-output-zone').style.display = 'block'; showToast(`💻 Compiled ${lang.toUpperCase()}!`);
+            } catch (err) { alert("Compilation Error: " + err.message); }
+        }
+
+        function compileToTypeScript(obj, name) { if (Array.isArray(obj)) return `export type ${name} = ${compileToTypeScript(obj[0]||{}, name+"Item")}[];`; if (typeof obj !== 'object' || obj === null) return typeof obj; let code = `export interface ${name} {\n`; let nested = ""; for (let k in obj) { let type = typeof obj[k]; if (obj[k] === null) type = "any"; else if (Array.isArray(obj[k])) { let sub = k.charAt(0).toUpperCase()+k.slice(1)+"Item"; type = typeof obj[k][0]==='object' && obj[k][0]!==null ? `${sub}[]` : `${typeof obj[k][0]||'any'}[]`; if (typeof obj[k][0]==='object' && obj[k][0]!==null) nested += compileToTypeScript(obj[k][0], sub)+"\n\n"; } else if (type === 'object') { let sub = k.charAt(0).toUpperCase()+k.slice(1); type = sub; nested += compileToTypeScript(obj[k], sub)+"\n\n"; } code += `  ${k}: ${type};\n`; } return nested + code + `}`; }
+        function compileToDartClass(obj, name) { if (Array.isArray(obj)) return compileToDartClass(obj[0]||{}, name); if (typeof obj !== 'object' || obj === null) return "dynamic"; let code = `class ${name} {\n`; let fields = ""; let constructor = `  ${name}({\n`; let fromJson = `  factory ${name}.fromJson(Map<String, dynamic> json) {\n    return ${name}(\n`; let nested = ""; for (let k in obj) { let v = obj[k]; let type = "dynamic"; if (typeof v === 'string') type = "String"; else if (typeof v === 'number') type = v % 1 === 0 ? "int" : "double"; else if (typeof v === 'boolean') type = "bool"; else if (Array.isArray(v)) { let sub = k.charAt(0).toUpperCase()+k.slice(1)+"Model"; if (typeof v[0]==='object' && v[0]!==null) { type = `List<${sub}>`; nested += compileToDartClass(v[0], sub)+"\n\n"; } else type = `List<${typeof v[0]==='string'?'String':(typeof v[0]==='number'?'int':'dynamic')}>`; } else if (typeof v === 'object' && v!==null) { let sub = k.charAt(0).toUpperCase()+k.slice(1)+"Model"; type = sub; nested += compileToDartClass(v, sub)+"\n\n"; } fields += `  final ${type}? ${k};\n`; constructor += `    this.${k},\n`; if (type.startsWith("List<") && !type.includes("String") && !type.includes("int")) { let subM = type.replace("List<","").replace(">",""); fromJson += `      ${k}: (json['${k}'] as List?)?.map((e) => ${subM}.fromJson(e as Map<String, dynamic>)).toList(),\n`; } else if (!["String","int","double","bool","dynamic"].includes(type) && !type.startsWith("List")) { fromJson += `      ${k}: json['${k}'] != null ? ${type}.fromJson(json['${k}']) : null,\n`; } else { fromJson += `      ${k}: json['${k}'],\n`; } } return nested + code + fields + "\n" + constructor + `  });\n\n` + fromJson + `    );\n  }\n}`; }
+        function compileToPythonDataClass(obj, name) { if (Array.isArray(obj)) return compileToPythonDataClass(obj[0]||{}, name); let head = "from dataclasses import dataclass\nfrom typing import List, Any, Optional\n\n"; let nested = ""; function genPy(o, cName) { let cl = `@dataclass\nclass ${cName}:\n`; let has = false; for (let k in o) { has = true; let v = o[k]; let type = "Any"; if (typeof v === 'string') type = "str"; else if (typeof v === 'number') type = v % 1 === 0 ? "int" : "float"; else if (typeof v === 'boolean') type = "bool"; else if (Array.isArray(v)) { let sub = k.charAt(0).toUpperCase()+k.slice(1)+"Model"; if (typeof v[0]==='object' && v[0]!==null) { type = `List['${sub}']`; nested += genPy(v[0], sub)+"\n\n"; } else type = `List[${typeof v[0]==='string'?'str':'int'}]`; } else if (typeof v === 'object' && v!==null) { let sub = k.charAt(0).toUpperCase()+k.slice(1)+"Model"; type = `'${sub}'`; nested += genPy(v, sub)+"\n\n"; } cl += `    ${k}: Optional[${type}] = None\n`; } if(!has) cl += "    pass\n"; return cl; } return head + nested + genPy(obj, name); }
+
+        function copyModelResult() { navigator.clipboard.writeText(document.getElementById('model-text-output').innerText); showToast("📋 Copied!"); }
+        function exportModelFile() { let ext = currentModelLang === 'ts' ? 'ts' : (currentModelLang === 'dart' ? 'dart' : 'py'); executeBlobDownload(document.getElementById('model-text-output').innerText, `model.${ext}`, "text/plain"); }
+
+        /* EXTENSION CONVERTERS */
+        function activateConverter(format) { currentTargetFormat = format; document.getElementById('converter-select').innerHTML = '<option value="">-- Choose an index record --</option>'; Object.keys(getSaves()).forEach(k => { let opt = document.createElement('option'); opt.value = k; opt.innerText = k; document.getElementById('converter-select').appendChild(opt); }); document.getElementById('converter-selection-zone').style.display = 'block'; }
+        function onConverterRecordSelected() {
+            const key = document.getElementById('converter-select').value; if (!key) return;
+            try {
+                const parsed = JSON.parse(getSaves()[key]); let out = "";
+                if (currentTargetFormat === 'yaml') out = jsyaml.dump(parsed);
+                else if (currentTargetFormat === 'xml') out = jsonToXmlExt(parsed);
+                else if (currentTargetFormat === 'toml') out = jsonToTomlExt(parsed);
+                else if (currentTargetFormat === 'csv') out = jsonToCsvExt(parsed);
+                document.getElementById('converter-text-output').innerText = out; document.getElementById('converter-output-zone').style.display = 'block'; showToast(`🔀 Mirrored to ${currentTargetFormat.toUpperCase()}!`);
+            } catch (err) { alert("Conversion Error: " + err.message); }
+        }
+        function toggleConverterBody() { const b = document.getElementById('converter-toggle-body'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; }
+        function copyConverterResult() { navigator.clipboard.writeText(document.getElementById('converter-text-output').innerText); showToast("📋 Copied!"); }
+        function exportConverterResult() { executeBlobDownload(document.getElementById('converter-text-output').innerText, `converted.${currentTargetFormat}`, "text/plain"); }
+
+        function jsonToXmlExt(obj, root = "root") { let xml = ""; if (Array.isArray(obj)) { obj.forEach(i => xml += `<item>${jsonToXmlExt(i, "")}</item>`); } else if (typeof obj === "object" && obj !== null) { for (let k in obj) { let cK = k.replace(/[^a-zA-Z0-9_.-]/g, "_"); if (Array.isArray(obj[k])) { obj[k].forEach(s => xml += `<${cK}>${jsonToXmlExt(s, "")}</${cK}>`); } else if (typeof obj[k] === "object" && obj[k] !== null) xml += `<${cK}>${jsonToXmlExt(obj[k], "")}</${cK}>`; else xml += `<${cK}>${obj[k]}</${cK}>`; } } else xml += obj; return root ? `<${root}>${xml}</${root}>` : xml; }
+        function jsonToTomlExt(obj, pref = "") { let t = "", tbl = ""; if (typeof obj !== "object" || obj === null || Array.isArray(obj)) return "# Error"; for (let k in obj) { let v = obj[k]; if (Array.isArray(v)) { if (v.length > 0 && typeof v[0] === 'object' && v[0] !== null) { v.forEach(i => tbl += `\n[[${pref}${k}]]\n` + jsonToTomlExt(i, `${pref}${k}.`)); } else t += `${k} = ${JSON.stringify(v)}\n`; } else if (typeof v === "object" && v !== null) { tbl += `\n[${pref}${k}]\n` + jsonToTomlExt(v, `${pref}${k}.`); } else if(v!==null) t += `${k} = ${typeof v === 'string' ? `"${v.replace(/"/g, '\\"')}"` : v}\n`; } return t + tbl; }
+        function jsonToCsvExt(obj) { let arr = Array.isArray(obj) ? obj : [obj]; function flat(o, p='') { let res = {}; for (let k in o) { let v = o[k]; let nK = p ? p+'_'+k : k; if (typeof v === 'object' && v !== null && !Array.isArray(v)) Object.assign(res, flat(v, nK)); else if (Array.isArray(v)) res[nK] = JSON.stringify(v); else res[nK] = v; } return res; } let rows = arr.map(i => flat(i)); let hdrs = Array.from(new Set(rows.reduce((a, r) => a.concat(Object.keys(r)), []))); if (!hdrs.length) return "Empty"; let csv = [hdrs.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',')]; rows.forEach(r => csv.push(hdrs.map(h => `"${String(r[h]??'').replace(/"/g, '""')}"`).join(','))); return csv.join('\n'); }
+
+        /* REVERSE IMPORTERS (XML, YAML, TOML to JSON) */
+        function fetchReverseFromUrl() {
+            const url = document.getElementById('reverse-url-input').value.trim(); if(!url) return;
+            fetch(url).then(res => res.text()).then(text => { document.getElementById('reverse-input').value = text; showToast("📥 Downloaded!"); }).catch(e => alert("Error: " + e.message));
+        }
+        function handleReverseFileImport(event) {
+            const file = event.target.files[0]; if (!file) return; const r = new FileReader(); r.onload = e => { document.getElementById('reverse-input').value = e.target.result; }; r.readAsText(file);
+        }
+        function executeReverseCompilation() {
+            const text = document.getElementById('reverse-input').value; const format = document.getElementById('reverse-format-select').value;
+            if(!text.trim()) { alert("Paste content first."); return; }
+            try {
+                let parsed = null;
+                if (format === 'yaml') parsed = jsyaml.load(text);
+                else if (format === 'toml') parsed = toml.parse(text);
+                else if (format === 'xml') parsed = parseXmlToJson(text);
+                
+                jsonInput.value = JSON.stringify(parsed, null, 2); onEditorInput(); showToast(`✅ Compiled from ${format.toUpperCase()}!`);
+            } catch (err) { alert(`Failed to compile ${format.toUpperCase()}:\n` + err.message); }
+        }
+        function parseXmlToJson(xmlStr) {
+            const parser = new DOMParser(); const xml = parser.parseFromString(xmlStr, "text/xml");
+            if (xml.getElementsByTagName("parsererror").length) throw new Error("Invalid XML structural syntax");
+            function parseNode(node) {
+                let obj = {}; if (node.nodeType === 3) return node.nodeValue.trim();
+                if (node.hasChildNodes()) {
+                    for (let i = 0; i < node.childNodes.length; i++) {
+                        let child = node.childNodes.item(i); let nodeName = child.nodeName;
+                        if (nodeName === "#text") { let text = child.nodeValue.trim(); if (text) obj = text; } 
+                        else { if (obj[nodeName] === undefined) obj[nodeName] = parseNode(child); else { if (!Array.isArray(obj[nodeName])) obj[nodeName] = [obj[nodeName]]; obj[nodeName].push(parseNode(child)); } }
+                    }
+                }
+                return obj;
+            }
+            let res = {}; res[xml.documentElement.nodeName] = parseNode(xml.documentElement); return res;
+        }
+
+        function openDiffModal() { document.getElementById('diff-modal').classList.add('active'); }
+        function closeDiffModal() { document.getElementById('diff-modal').classList.remove('active'); }
+        function runDiffChecker() { let lA = jsonInput.value.split('\n'), lB = document.getElementById('diff-json-b').value.split('\n'), html = ""; for(let i = 0; i < Math.max(lA.length, lB.length); i++) { let a = lA[i], b = lB[i]; if(a === b) html += `<div style="color:#64748b;">  ${a?a.replace(/</g,'&lt;'):''}</div>`; else { if(a!=null) html += `<div style="color:#f87171;background:#3f1616;">- ${a.replace(/</g,'&lt;')}</div>`; if(b!=null) html += `<div style="color:#34d399;background:#143a24;">+ ${b.replace(/</g,'&lt;')}</div>`; } } document.getElementById('diff-results-output').innerHTML = html || "Identical"; }
+        
+        // RFC DOWNLOAD
+        function downloadRFC() { executeBlobDownload(document.getElementById('rfc-text-content').innerText, "RFC-8259_JSON.txt", "text/plain"); }
+    </script>
+</body>
+</html>
